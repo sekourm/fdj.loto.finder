@@ -1,39 +1,10 @@
 <?php
 
-//-------------------------------//
-// MERCREDI:
-// 34, 49, 38, 36, 19
-// JEUDI:
-// 4, 24, 10, 15, 20
-// VENDREDI:
-// 19, 24, 39, 41, 47
-// SAMEDI:
-// 20, 39, 27, 4, 16
-// TOUS LES JOURS:
-// 34, 36, 49, 16, 20
-//-------------------------------//
+$draw   = ['boule_1', 'boule_2', 'boule_3', 'boule_4', 'boule_5'];
+$dates  = ['jour_de_tirage'];
+$keep   = array_merge($draw, $dates);
 
-$draw     = [
-    "boule_1",
-    "boule_2",
-    "boule_3",
-    "boule_4",
-    "boule_5"
-];
-$dates      = [
-    "jour_de_tirage"
-];
-$keep = array_merge($draw, $dates);
-
-$days = [
-    'LU' => 'LUNDI',
-    'MA' => 'MARDI',
-    'ME' => 'MERCREDI',
-    'JE' => 'JEUDI',
-    'VE' => 'VENDREDI',
-    'SA' => 'SAMEDI',
-    'DI' => 'DIMANCHE'
-];
+$days = ['LU' => 'LUNDI', 'MA' => 'MARDI', 'ME' => 'MERCREDI', 'JE' => 'JEUDI', 'VE' => 'VENDREDI', 'SA' => 'SAMEDI', 'DI' => 'DIMANCHE'];
 
 $path           = 'tirages/1976-2008.csv';
 $arrSegmented   = convertToArray($path, $keep, $days);
@@ -42,13 +13,13 @@ $resultsByDay   = sortResultsByDay($resultsByDay);
 
 echo PHP_EOL;
 foreach ($resultsByDay as $day => $combos) {
-    echo "$day: " . PHP_EOL;
+    echo '$day: ' . PHP_EOL;
     echo implode(', ', $combos) . PHP_EOL;
     echo PHP_EOL;
 }
 
 $results = processPrints($arrSegmented, $draw);
-echo "TOUS LES JOURS: " . PHP_EOL;
+echo 'TOUS LES JOURS: ' . PHP_EOL;
 echo implode(', ', $results) . PHP_EOL;
 echo PHP_EOL;
 
@@ -72,7 +43,6 @@ function convertToArray(
     }
 
     $data = [];
-
     if (($handle = fopen($path, 'r')) !== false) {
         $header = fgetcsv($handle, 1000, ';', '"', '\\');
         while ($header && ($line = fgetcsv($handle, 1000, ';', '"', '\\')) !== false) {
@@ -83,9 +53,7 @@ function convertToArray(
                 },
                 ARRAY_FILTER_USE_KEY
             );
-
             $filtered_line['jour_de_tirage'] = $days[$filtered_line['jour_de_tirage']];
-
             $data[] = $filtered_line;
         }
         fclose($handle);
@@ -192,11 +160,9 @@ function processByDayAndType(
     $resultsByDay = [];
     foreach ($data as $line) {
         $day = $line['jour_de_tirage'];
-
         if (!isset($resultsByDay[$day])) {
             $resultsByDay[$day] = [];
         }
-
         $resultsByDay[$day][] = $line;
     }
 
@@ -220,15 +186,7 @@ function processByDayAndType(
 function sortResultsByDay(
     array $resultsByDay
 ): array {
-    $order = [
-        'LUNDI'    => 0,
-        'MARDI'    => 1,
-        'MERCREDI' => 2,
-        'JEUDI'    => 3,
-        'VENDREDI' => 4,
-        'SAMEDI'   => 5,
-        'DIMANCHE' => 6
-    ];
+    $order = ['LUNDI' => 0, 'MARDI' => 1, 'MERCREDI' => 2, 'JEUDI' => 3, 'VENDREDI' => 4, 'SAMEDI' => 5, 'DIMANCHE' => 6];
     uksort($resultsByDay, function ($a, $b) use ($order) {
         return $order[$a] <=> $order[$b];
     });
