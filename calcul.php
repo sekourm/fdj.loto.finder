@@ -2,9 +2,6 @@
 
 $path       = '1976-2008.csv';
 
-$index      = [
-    "1er_ou_2eme_tirage"
-];
 $simple     = [
     "boule_1",
     "boule_2",
@@ -17,7 +14,7 @@ $dates      = [
     "jour_de_tirage"
 ];
 
-$keep = array_merge($index, $simple, $dates);
+$keep = array_merge($simple, $dates);
 
 $dayOrder = [
     'LUNDI',
@@ -54,9 +51,7 @@ function convertToArray(
         'DI' => 'DIMANCHE'
     ];
 
-    $data = [
-        'all' => []
-    ];
+    $data = [];
 
     if (($handle = fopen($path, 'r')) !== false) {
         $header = fgetcsv($handle, 1000, ';', '"', '\\');
@@ -71,7 +66,7 @@ function convertToArray(
 
             $filtered_line['jour_de_tirage'] = $days[$filtered_line['jour_de_tirage']];
 
-            $data['all'][] = $filtered_line;
+            $data[] = $filtered_line;
         }
         fclose($handle);
     }
@@ -159,12 +154,11 @@ function processPrints(
     array $simple
 ): array {
     $results = [];
-    foreach ($data as $key => $value) {
-        $frequencies        = getFrequencies($value, $simple);
-        $probabilities      = getProbabilities($frequencies);
-        $bestCombination    = getBestCombination($probabilities);
-        $results[$key]      = $bestCombination;
-    }
+    $frequencies = getFrequencies($data, $simple);
+    $probabilities = getProbabilities($frequencies);
+    $bestCombination = getBestCombination($probabilities);
+    $results = $bestCombination;
+
     return $results;
 }
 
@@ -182,25 +176,20 @@ function processByDayAndType(
     $resultsByDay = [];
     foreach ($data as $line) {
         $day = $line['jour_de_tirage'];
-        $type = $line['1er_ou_2eme_tirage'];
 
         if (!isset($resultsByDay[$day])) {
-            $resultsByDay[$day] = [
-                'all' => []
-            ];
+            $resultsByDay[$day] = [];
         }
 
-        $resultsByDay[$day]['all'][] = $line;
+        $resultsByDay[$day][] = $line;
     }
 
     $finalResults = [];
-    foreach ($resultsByDay as $day => $types) {
-        foreach ($types as $key => $lines) {
-            $frequencies = getFrequencies($lines, $simple);
-            $probabilities = getProbabilities($frequencies);
-            $bestCombination = getBestCombination($probabilities);
-            $finalResults[$day][$key] = $bestCombination;
-        }
+    foreach ($resultsByDay as $day => $lines) {
+        $frequencies = getFrequencies($lines, $simple);
+        $probabilities = getProbabilities($frequencies);
+        $bestCombination = getBestCombination($probabilities);
+        $finalResults[$day] = $bestCombination;
     }
 
     return $finalResults;
@@ -227,18 +216,18 @@ function sortResultsByDay(
 
 $arrSegmented = convertToArray($path, $keep);
 if ($arrSegmented) {
-    $resultsByDay = processByDayAndType($arrSegmented['all'], $simple);
+    $resultsByDay = processByDayAndType($arrSegmented, $simple);
     $resultsByDay = sortResultsByDay($resultsByDay, $dayOrder);
 
     echo PHP_EOL;
     foreach ($resultsByDay as $day => $combos) {
         echo "$day : " . PHP_EOL;
-        echo implode(', ', $combos['all']) . PHP_EOL;
+        echo implode(', ', $combos) . PHP_EOL;
         echo PHP_EOL;
     }
 
     $results = processPrints($arrSegmented, $simple);
     echo "TOUS LES JOURS : " . PHP_EOL;
-    echo implode(', ', $results['all']) . PHP_EOL;
+    echo implode(', ', $results) . PHP_EOL;
     echo PHP_EOL;
 }
