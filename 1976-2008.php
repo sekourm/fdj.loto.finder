@@ -1,5 +1,18 @@
 <?php
 
+//-------------------------------//
+// MERCREDI:
+// 34, 49, 38, 36, 19
+// JEUDI:
+// 4, 24, 10, 15, 20
+// VENDREDI:
+// 19, 24, 39, 41, 47
+// SAMEDI:
+// 20, 39, 27, 4, 16
+// TOUS LES JOURS:
+// 34, 36, 49, 16, 20
+//-------------------------------//
+
 $draw     = [
     "boule_1",
     "boule_2",
@@ -22,7 +35,7 @@ $days = [
     'DI' => 'DIMANCHE'
 ];
 
-$path           = '1976-2008.csv';
+$path           = 'tirages/1976-2008.csv';
 $arrSegmented   = convertToArray($path, $keep, $days);
 $resultsByDay   = processByDayAndType($arrSegmented, $draw);
 $resultsByDay   = sortResultsByDay($resultsByDay);
@@ -39,7 +52,7 @@ echo "TOUS LES JOURS: " . PHP_EOL;
 echo implode(', ', $results) . PHP_EOL;
 echo PHP_EOL;
 
-//-----------------------------------------------------
+//-------------------------------//
 
 /**
  * Convert CSV to ARRAY
