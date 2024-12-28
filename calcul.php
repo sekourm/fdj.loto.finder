@@ -1,12 +1,11 @@
 <?php
 
-$base               = basename(__FILE__);
-$path               = str_replace('.php', '.csv', $base);
+$path       = 'all.csv';
 
-$index = [
+$index      = [
     "1er_ou_2eme_tirage"
 ];
-$simple = [
+$simple     = [
     "boule_1",
     "boule_2",
     "boule_3",
@@ -14,20 +13,11 @@ $simple = [
     "boule_5",
     "boule_6"
 ];
-$dates = [
+$dates      = [
     "jour_de_tirage"
 ];
-$winners = [
-    "nombre_de_gagnant_au_rang1",
-    "nombre_de_gagnant_au_rang2",
-    "nombre_de_gagnant_au_rang3",
-    "nombre_de_gagnant_au_rang4",
-    "nombre_de_gagnant_au_rang5",
-    "nombre_de_gagnant_au_rang6",
-    "nombre_de_gagnant_au_rang7"
-];
 
-$keep = array_merge($index, $simple, $dates, $winners);
+$keep = array_merge($index, $simple, $dates);
 
 $dayOrder = [
     'LUNDI',
