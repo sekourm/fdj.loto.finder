@@ -139,14 +139,14 @@ function getProbabilities(
  * Get the best combination
  *
  * @param array $probabilities
- * @param int $count
+ * @param array $draw
  * @return array
  */
 function getBestCombination(
     array $probabilities,
-    int $count = 5
+    array $draw
 ): array {
-    return array_slice(array_keys($probabilities), 0, $count);
+    return array_slice(array_keys($probabilities), 0, count($draw));
 }
 
 /**
@@ -162,7 +162,7 @@ function processPrints(
 ): array {
     $frequencies    = getFrequencies($data, $draw);
     $probabilities  = getProbabilities($frequencies);
-    return getBestCombination($probabilities);
+    return getBestCombination($probabilities, $draw);
 }
 
 /**
@@ -191,7 +191,7 @@ function processByDayAndType(
     foreach ($resultsByDay as $day => $lines) {
         $frequencies        = getFrequencies($lines, $draw);
         $probabilities      = getProbabilities($frequencies);
-        $bestCombination    = getBestCombination($probabilities);
+        $bestCombination    = getBestCombination($probabilities, $draw);
         $finalResults[$day] = $bestCombination;
     }
 
