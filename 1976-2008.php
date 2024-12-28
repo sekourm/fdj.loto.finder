@@ -13,13 +13,13 @@ $resultsByDay   = sortResultsByDay($resultsByDay);
 
 echo PHP_EOL;
 foreach ($resultsByDay as $day => $combos) {
-    echo '$day: ' . PHP_EOL;
+    echo $day.':'  . PHP_EOL;
     echo implode(', ', $combos) . PHP_EOL;
     echo PHP_EOL;
 }
 
 $results = processPrints($arrSegmented, $draw);
-echo 'TOUS LES JOURS: ' . PHP_EOL;
+echo 'GLOBAL: ' . PHP_EOL;
 echo implode(', ', $results) . PHP_EOL;
 echo PHP_EOL;
 
