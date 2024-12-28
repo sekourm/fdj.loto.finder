@@ -1,6 +1,6 @@
 <?php
 
-$path       = 'all.csv';
+$path       = '1976-2008.csv';
 
 $index      = [
     "1er_ou_2eme_tirage"
@@ -45,15 +45,16 @@ function convertToArray(
     }
 
     $days = [
+        'LU' => 'LUNDI',
+        'MA' => 'MARDI',
         'ME' => 'MERCREDI',
         'JE' => 'JEUDI',
+        'VE' => 'VENDREDI',
         'SA' => 'SAMEDI',
-        'VE' => 'VENDREDI'
+        'DI' => 'DIMANCHE'
     ];
 
     $data = [
-        'print_1' => [],
-        'print_2' => [],
         'all' => []
     ];
 
@@ -71,12 +72,6 @@ function convertToArray(
             $filtered_line['jour_de_tirage'] = $days[$filtered_line['jour_de_tirage']];
 
             $data['all'][] = $filtered_line;
-
-            if ($filtered_line['1er_ou_2eme_tirage'] === '1') {
-                $data['print_1'][] = $filtered_line;
-            } elseif ($filtered_line['1er_ou_2eme_tirage'] === '2') {
-                $data['print_2'][] = $filtered_line;
-            }
         }
         fclose($handle);
     }
@@ -191,17 +186,10 @@ function processByDayAndType(
 
         if (!isset($resultsByDay[$day])) {
             $resultsByDay[$day] = [
-                'print_1' => [],
-                'print_2' => [],
                 'all' => []
             ];
         }
 
-        if ($type === '1') {
-            $resultsByDay[$day]['print_1'][] = $line;
-        } elseif ($type === '2') {
-            $resultsByDay[$day]['print_2'][] = $line;
-        }
         $resultsByDay[$day]['all'][] = $line;
     }
 
@@ -245,16 +233,12 @@ if ($arrSegmented) {
     echo PHP_EOL;
     foreach ($resultsByDay as $day => $combos) {
         echo "$day : " . PHP_EOL;
-        echo "  Tirage 1 : " . implode(', ', $combos['print_1']) . PHP_EOL;
-        echo "  Tirage 2 : " . implode(', ', $combos['print_2']) . PHP_EOL;
-        echo "  Tirage 1 + 2 : " . implode(', ', $combos['all']) . PHP_EOL;
+        echo implode(', ', $combos['all']) . PHP_EOL;
         echo PHP_EOL;
     }
 
     $results = processPrints($arrSegmented, $simple);
     echo "TOUS LES JOURS : " . PHP_EOL;
-    echo " Tirage 1 : " . implode(', ', $results['print_1']) . PHP_EOL;
-    echo " Tirage 2 : " . implode(', ', $results['print_2']) . PHP_EOL;
-    echo " Tirage 1 + 2 : " . implode(', ', $results['all']) . PHP_EOL;
+    echo implode(', ', $results['all']) . PHP_EOL;
     echo PHP_EOL;
 }
