@@ -5,8 +5,7 @@ $draw     = [
     "boule_2",
     "boule_3",
     "boule_4",
-    "boule_5",
-    "boule_6"
+    "boule_5"
 ];
 $dates      = [
     "jour_de_tirage"
@@ -145,7 +144,7 @@ function getProbabilities(
  */
 function getBestCombination(
     array $probabilities,
-    int $count = 6
+    int $count = 5
 ): array {
     return array_slice(array_keys($probabilities), 0, $count);
 }
