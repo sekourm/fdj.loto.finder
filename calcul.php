@@ -1,7 +1,5 @@
 <?php
 
-$path       = '1976-2008.csv';
-
 $draw     = [
     "boule_1",
     "boule_2",
@@ -13,7 +11,6 @@ $draw     = [
 $dates      = [
     "jour_de_tirage"
 ];
-
 $keep = array_merge($draw, $dates);
 
 $days = [
@@ -25,6 +22,25 @@ $days = [
     'SA' => 'SAMEDI',
     'DI' => 'DIMANCHE'
 ];
+
+$path           = '1976-2008.csv';
+$arrSegmented   = convertToArray($path, $keep, $days);
+$resultsByDay   = processByDayAndType($arrSegmented, $draw);
+$resultsByDay   = sortResultsByDay($resultsByDay);
+
+echo PHP_EOL;
+foreach ($resultsByDay as $day => $combos) {
+    echo "$day: " . PHP_EOL;
+    echo implode(', ', $combos) . PHP_EOL;
+    echo PHP_EOL;
+}
+
+$results = processPrints($arrSegmented, $draw);
+echo "TOUS LES JOURS: " . PHP_EOL;
+echo implode(', ', $results) . PHP_EOL;
+echo PHP_EOL;
+
+//-----------------------------------------------------
 
 /**
  * Convert CSV to ARRAY
@@ -205,22 +221,4 @@ function sortResultsByDay(
         return $order[$a] <=> $order[$b];
     });
     return $resultsByDay;
-}
-
-$arrSegmented = convertToArray($path, $keep, $days);
-if ($arrSegmented) {
-    $resultsByDay = processByDayAndType($arrSegmented, $draw);
-    $resultsByDay = sortResultsByDay($resultsByDay);
-
-    echo PHP_EOL;
-    foreach ($resultsByDay as $day => $combos) {
-        echo "$day: " . PHP_EOL;
-        echo implode(', ', $combos) . PHP_EOL;
-        echo PHP_EOL;
-    }
-
-    $results = processPrints($arrSegmented, $draw);
-    echo "TOUS LES JOURS: " . PHP_EOL;
-    echo implode(', ', $results) . PHP_EOL;
-    echo PHP_EOL;
 }
