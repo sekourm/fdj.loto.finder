@@ -6,7 +6,7 @@ $keep   = array_merge($draw, $dates);
 
 $days = ['LU' => 'LUNDI', 'MA' => 'MARDI', 'ME' => 'MERCREDI', 'JE' => 'JEUDI', 'VE' => 'VENDREDI', 'SA' => 'SAMEDI', 'DI' => 'DIMANCHE'];
 
-$path           = 'tirages/1976-2008.csv';
+$path           = '1976-2008.csv';
 $arrSegmented   = convertToArray($path, $keep, $days);
 $resultsByDay   = processByDayAndType($arrSegmented, $draw);
 $resultsByDay   = sortResultsByDay($resultsByDay);
