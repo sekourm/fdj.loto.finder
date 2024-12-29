@@ -1,7 +1,35 @@
 <?php
 
+$date = null;
+$limitDate = '21/12/2024';
+
+if (isset($argv)) {
+    foreach ($argv as $index => $arg) {
+        if ($arg === 'date' && isset($argv[$index + 1])) {
+            $date = $argv[$index + 1];
+            break;
+        }
+    }
+}
+
+if ($date !== null) {
+    $dateObject = DateTime::createFromFormat('d/m/Y', $date);
+    $referenceDate = DateTime::createFromFormat('d/m/Y', $limitDate);
+    if ($dateObject && $dateObject->format('d/m/Y') === $date) {
+        if ($dateObject > $referenceDate) {
+            echo PHP_EOL.'La valeur de date ('.$date.') dépasse la date de début autorisée '.$limitDate.PHP_EOL;
+            exit;
+        } else {
+            echo PHP_EOL.'Calcul effectué à partir du : '.$date.PHP_EOL;
+        }
+    } else {
+        echo PHP_EOL.'La valeur de date n\'est pas valide. Veuillez utiliser le format dd/mm/YYYY.'.PHP_EOL;
+        exit;
+    }
+}
+
 $draw   = ['boule_1', 'boule_2', 'boule_3', 'boule_4', 'boule_5'];
-$dates  = ['jour_de_tirage'];
+$dates  = ['jour_de_tirage', 'date_de_tirage'];
 $keep   = array_merge($draw, $dates);
 
 $days = ['LU' => 'LUNDI', 'MA' => 'MARDI', 'ME' => 'MERCREDI', 'JE' => 'JEUDI', 'VE' => 'VENDREDI', 'SA' => 'SAMEDI', 'DI' => 'DIMANCHE'];
