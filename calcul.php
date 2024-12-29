@@ -35,7 +35,7 @@ $keep   = array_merge($draw, $dates);
 $days = ['LU' => 'LUNDI', 'MA' => 'MARDI', 'ME' => 'MERCREDI', 'JE' => 'JEUDI', 'VE' => 'VENDREDI', 'SA' => 'SAMEDI', 'DI' => 'DIMANCHE'];
 
 $path           = 'all.csv';
-$arrSegmented   = convertToArray($path, $keep, $days);
+$arrSegmented   = convertToArray($path, $keep, $days, $date);
 $resultsByDay   = processByDayAndType($arrSegmented, $draw);
 $resultsByDay   = sortResultsByDay($resultsByDay);
 
@@ -59,12 +59,14 @@ echo PHP_EOL;
  * @param string $path
  * @param array $keep
  * @param array $days
+ * @param string|null $date
  * @return array|false
  */
 function convertToArray(
     string $path,
     array $keep,
-    array $days
+    array $days,
+    ?string $date
 ): array|false {
     if (!is_readable($path)) {
         return false;
@@ -83,10 +85,18 @@ function convertToArray(
             );
             if (isset($days[$filtered_line['jour_de_tirage']])) {
                 $filtered_line['jour_de_tirage'] = $days[$filtered_line['jour_de_tirage']];
+                $dateObject = DateTime::createFromFormat('Ymd', $filtered_line['date_de_tirage']);
+                $filtered_line['date_de_tirage'] = $dateObject->format('d/m/Y');
             } else {
                 $filtered_line['jour_de_tirage'] = trim($filtered_line['jour_de_tirage']);
             }
-            $data[] = $filtered_line;
+            if (null !== $date) {
+                if (DateTime::createFromFormat('d/m/Y', $filtered_line['date_de_tirage']) >= DateTime::createFromFormat('d/m/Y', $date)) {
+                    $data[] = $filtered_line;
+                }
+            } else {
+                $data[] = $filtered_line;
+            }
         }
         fclose($handle);
     }
