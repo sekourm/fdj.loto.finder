@@ -28,7 +28,7 @@ if ($date !== null) {
     }
 }
 
-$draw   = ['boule_1', 'boule_2', 'boule_3', 'boule_4', 'boule_5'];
+$draw   = ['boule_1', 'boule_2', 'boule_3', 'boule_4', 'boule_5', 'numero_chance'];
 $dates  = ['jour_de_tirage', 'date_de_tirage'];
 $keep   = array_merge($draw, $dates);
 
@@ -111,17 +111,19 @@ function convertToArray(
  * @param array $draw
  * @return array
  */
-function getFrequencies(
-    array $arr,
-    array $draw
-): array {
+function getFrequencies(array $arr, array $draw): array {
     $frequencies = array_fill(1, 49, 0);
+    $frequenciesChance = array_fill(1, 10, 0); // Pour numero_chance
 
     foreach ($arr as $value) {
         foreach ($value as $key => $v) {
+            $nbr = (int)$v;
             if (in_array($key, $draw)) {
-                $nbr = (int)$v;
-                if ($nbr >= 1 && $nbr <= 49) {
+                if (strpos($key, 'numero_chance') !== false) {
+                    if ($nbr >= 1 && $nbr <= 10) {
+                        $frequenciesChance[$nbr]++;
+                    }
+                } elseif ($nbr >= 1 && $nbr <= 49) {
                     $frequencies[$nbr]++;
                 }
             }
@@ -129,8 +131,12 @@ function getFrequencies(
     }
 
     asort($frequencies);
+    asort($frequenciesChance);
 
-    return $frequencies;
+    return [
+        'main' => $frequencies,
+        'chance' => $frequenciesChance
+    ];
 }
 
 /**
@@ -139,23 +145,24 @@ function getFrequencies(
  * @param array $frequencies
  * @return array
  */
-function getProbabilities(
-    array $frequencies
-): array
-{
-    $totalDraws = array_sum($frequencies);
+function getProbabilities(array $frequencies): array {
+    $totalDrawsMain     = array_sum($frequencies['main']);
+    $totalDrawsChance   = array_sum($frequencies['chance']);
 
-    if ($totalDraws === 0) {
-        return [];
-    }
+    $probabilitiesMain = $totalDrawsMain > 0
+        ? array_map(fn($count) => $count / $totalDrawsMain, $frequencies['main'])
+        : [];
+    $probabilitiesChance = $totalDrawsChance > 0
+        ? array_map(fn($count) => $count / $totalDrawsChance, $frequencies['chance'])
+        : [];
 
-    $probabilities = array_map(function ($count) use ($totalDraws) {
-        return $count / $totalDraws;
-    }, $frequencies);
+    arsort($probabilitiesMain);
+    arsort($probabilitiesChance);
 
-    arsort($probabilities);
-
-    return $probabilities;
+    return [
+        'main' => $probabilitiesMain,
+        'chance' => $probabilitiesChance
+    ];
 }
 
 /**
@@ -169,7 +176,9 @@ function getBestCombination(
     array $probabilities,
     array $draw
 ): array {
-    return array_slice(array_keys($probabilities), 0, count($draw));
+    $bestMain = array_slice(array_keys($probabilities['main']), 0, count($draw) - 1);
+    $bestChance = array_keys($probabilities['chance'])[0] ?? null;
+    return array_merge($bestMain, [$bestChance]);
 }
 
 /**
