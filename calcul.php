@@ -6,7 +6,7 @@ $keep   = array_merge($draw, $dates);
 
 $days = ['LU' => 'LUNDI', 'MA' => 'MARDI', 'ME' => 'MERCREDI', 'JE' => 'JEUDI', 'VE' => 'VENDREDI', 'SA' => 'SAMEDI', 'DI' => 'DIMANCHE'];
 
-$path           = '1976-2008.csv';
+$path           = 'all.csv';
 $arrSegmented   = convertToArray($path, $keep, $days);
 $resultsByDay   = processByDayAndType($arrSegmented, $draw);
 $resultsByDay   = sortResultsByDay($resultsByDay);
@@ -53,7 +53,11 @@ function convertToArray(
                 },
                 ARRAY_FILTER_USE_KEY
             );
-            $filtered_line['jour_de_tirage'] = $days[$filtered_line['jour_de_tirage']];
+            if (isset($days[$filtered_line['jour_de_tirage']])) {
+                $filtered_line['jour_de_tirage'] = $days[$filtered_line['jour_de_tirage']];
+            } else {
+                $filtered_line['jour_de_tirage'] = trim($filtered_line['jour_de_tirage']);
+            }
             $data[] = $filtered_line;
         }
         fclose($handle);
