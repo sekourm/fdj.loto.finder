@@ -1,4 +1,4 @@
-# FDJLotoFinder
+# Fdj.loto.finder
 
 Analysis of French Loto (FDJ) draws from the raw `csv/*.csv` exports, producing the most probable grid based on observed frequencies.
 
