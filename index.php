@@ -10,6 +10,13 @@ const URL_FDJ           = 'https://www.sto.api.fdj.fr/anonymous/service-draw-inf
 const DELAI_HTTP        = 30;
 const LANGUE_DEFAUT     = 'en';
 const LANGUES           = ['en', 'fr'];
+const LARGEUR_SOMME     = 20;
+const SEUIL_ATYPIQUE    = 0.20;
+const TAILLE_POOL       = 12;
+const ESSAIS_TIRAGE     = 200;
+const MAX_DATE          = 31;
+const BACKTEST_MIN      = 100;
+const BACKTEST_REP      = 20;
 
 const ARCHIVES = [
     '1976-2008.csv'       => ['id' => 'l6', 'fixe' => true],
@@ -71,9 +78,15 @@ const TEXTES = [
         'ctx_fenetre'          => 'Recent window: %s',
         'ctx_fenetre_active'   => '%d draws, weight %s',
         'ctx_fenetre_inactive' => 'disabled',
-        'grille_principale'    => 'Most probable grid',
+        'ctx_typicite'         => 'Typicity filter: %s',
+        'ctx_typicite_active'  => 'rejects the %s rarest grid profiles and popular patterns, pool of %d numbers',
+        'grille_principale'    => 'Recommended grid',
         'grille_alternative'   => 'Alternative grid %d',
         'grille_ligne'         => '  %s  +  lucky %d',
+        'grille_profil'        => '  Profile: %d even, %d consecutive pair(s), %d decades, sum %d, shared by %s of all grids',
+        'grille_populaire'     => '  Popular pattern: %s',
+        'motif_dates'          => 'every number is 31 or below (birth dates)',
+        'motif_progression'    => 'constant step between the numbers',
         'grille_detail'        => '  Ball details (observed vs theoretical probability %s):',
         'grille_boule'         => '    %02d: %d hits, p=%s, recent=%s, gap=%d draws',
         'grille_chance'        => '    lucky %d: %d hits, p=%s (theoretical %s), recent=%s, gap=%d draws',
@@ -81,6 +94,24 @@ const TEXTES = [
         'tableau_chance'       => 'Lucky number',
         'tableau_titre'        => '%s (theoretical probability %s)',
         'tableau_entete'       => ['No.', 'Hits', 'P global', 'P recent', 'Score', 'Gap'],
+        'profils_titre'        => 'Grid profiles (theoretical over the %s possible grids vs observed over %d five-ball draws)',
+        'profils_entete'       => ['Value', 'Theoretical', 'Observed'],
+        'profil_pairs'         => 'Even numbers',
+        'profil_suites'        => 'Consecutive pairs',
+        'profil_dizaines'      => 'Distinct decades',
+        'profil_sommes'        => 'Sum of the 5 balls',
+        'bt_titre'             => 'Backtest over %d five-ball draws, each grid built only from the draws before it',
+        'bt_entete'            => ['Method', 'Grids', 'Avg hits', 'P(>=2)', 'P(>=3)'],
+        'bt_theorie'           => 'theory, any grid',
+        'bt_aleatoire'         => 'uniform random grid',
+        'bt_chaud'             => 'hot: 5 most frequent overall',
+        'bt_recent'            => 'hot: 5 most frequent in the recent window',
+        'bt_mix'               => 'frequency mix, top 5 without filter',
+        'bt_froid'             => 'cold: 5 largest gaps',
+        'bt_recommande'        => 'recommended grid (mix + typicity filter)',
+        'bt_echant'            => 'alternative grids (weighted sampling + filter)',
+        'bt_chance'            => 'Lucky number hit rate over %d draws (theory 10 %%): random %s, hottest %s, coldest %s',
+        'bt_bande'             => 'Noise band for the average over %d grids: %s to %s (2 standard deviations). A method only beats chance outside this band.',
         'aide'                 => <<<TXT
         Usage: php index.php [options]
 
@@ -89,11 +120,13 @@ const TEXTES = [
           --day=SATURDAY        Keep only draws of one weekday (MONDAY, WEDNESDAY, SATURDAY… or LUNDI, MERCREDI, SAMEDI…)
           --window=N            Number of most recent draws for the recent component (default 100, 0 = disabled)
           --recent-weight=X     Weight of the recent component between 0 and 1 (default 0.3)
+          --pool=N              Number of top-scored balls the recommended grid is picked from (default 12)
           --grids=N             Generate N alternative grids sampled proportionally to the probabilities
           --seed=N              Seed to make the alternative grids reproducible
+          --backtest            Replay the history and compare grid-selection methods on the real draws
           --offline             Do not query the FDJ website, use only the files present in csv/
           --force-update        Re-download every FDJ archive, including closed periods
-          --stats               Print the full probability table for every number
+          --stats               Print the full probability table for every number and the grid profile table
           --help, -h            Show this help
 
         TXT,
@@ -122,9 +155,15 @@ const TEXTES = [
         'ctx_fenetre'          => 'Fenêtre récente : %s',
         'ctx_fenetre_active'   => '%d tirages, poids %s',
         'ctx_fenetre_inactive' => 'désactivée',
-        'grille_principale'    => 'Grille la plus probable',
+        'ctx_typicite'         => 'Filtre de typicité : %s',
+        'ctx_typicite_active'  => 'écarte les %s de profils de grille les plus rares et les motifs populaires, réservoir de %d numéros',
+        'grille_principale'    => 'Grille recommandée',
         'grille_alternative'   => 'Grille alternative %d',
         'grille_ligne'         => '  %s  +  chance %d',
+        'grille_profil'        => '  Profil : %d pairs, %d suite(s), %d dizaines, somme %d, partagé par %s des grilles possibles',
+        'grille_populaire'     => '  Motif populaire : %s',
+        'motif_dates'          => 'tous les numéros inférieurs ou égaux à 31 (dates de naissance)',
+        'motif_progression'    => 'pas constant entre les numéros',
         'grille_detail'        => '  Détail des boules (probabilité observée vs théorique %s) :',
         'grille_boule'         => '    %02d : %d sorties, p=%s, récent=%s, écart=%d tirages',
         'grille_chance'        => '    chance %d : %d sorties, p=%s (théorique %s), récent=%s, écart=%d tirages',
@@ -132,6 +171,24 @@ const TEXTES = [
         'tableau_chance'       => 'Numéro chance',
         'tableau_titre'        => '%s (probabilité théorique %s)',
         'tableau_entete'       => ['N°', 'Sorties', 'P globale', 'P récente', 'Score', 'Écart'],
+        'profils_titre'        => 'Profils de grille (théorique sur les %s grilles possibles vs observé sur %d tirages à 5 boules)',
+        'profils_entete'       => ['Valeur', 'Théorique', 'Observé'],
+        'profil_pairs'         => 'Numéros pairs',
+        'profil_suites'        => 'Suites (couples consécutifs)',
+        'profil_dizaines'      => 'Dizaines distinctes',
+        'profil_sommes'        => 'Somme des 5 boules',
+        'bt_titre'             => 'Backtest sur %d tirages à 5 boules, chaque grille construite uniquement avec les tirages précédents',
+        'bt_entete'            => ['Méthode', 'Grilles', 'Moy. trouvés', 'P(>=2)', 'P(>=3)'],
+        'bt_theorie'           => 'théorie, grille quelconque',
+        'bt_aleatoire'         => 'grille aléatoire uniforme',
+        'bt_chaud'             => 'chaud : 5 plus fréquents sur tout l\'historique',
+        'bt_recent'            => 'chaud : 5 plus fréquents sur la fenêtre récente',
+        'bt_mix'               => 'mix de fréquences, top 5 sans filtre',
+        'bt_froid'             => 'froid : 5 plus grands écarts',
+        'bt_recommande'        => 'grille recommandée (mix + filtre de typicité)',
+        'bt_echant'            => 'grilles alternatives (tirage pondéré + filtre)',
+        'bt_chance'            => 'Taux de réussite du numéro chance sur %d tirages (théorie 10 %%) : aléatoire %s, plus chaud %s, plus froid %s',
+        'bt_bande'             => 'Bande de bruit pour la moyenne sur %d grilles : %s à %s (2 écarts-types). Une méthode ne bat le hasard qu\'en dehors de cette bande.',
         'aide'                 => <<<TXT
         Usage : php index.php [options]
 
@@ -140,11 +197,13 @@ const TEXTES = [
           --day=SAMEDI          Ne garder que les tirages d'un jour de la semaine (LUNDI, MERCREDI, SAMEDI… ou MONDAY, WEDNESDAY, SATURDAY…)
           --window=N            Nombre de tirages les plus récents pour la composante récente (100 par défaut, 0 = désactivée)
           --recent-weight=X     Poids de la composante récente entre 0 et 1 (0.3 par défaut)
+          --pool=N              Nombre de boules les mieux notées parmi lesquelles la grille recommandée est choisie (12 par défaut)
           --grids=N             Générer N grilles alternatives tirées proportionnellement aux probabilités
           --seed=N              Graine pour rendre les grilles alternatives reproductibles
+          --backtest            Rejouer l'historique et comparer les méthodes de choix de grille sur les tirages réels
           --offline             Ne pas interroger le site FDJ, utiliser uniquement les fichiers présents dans csv/
           --force-update        Retélécharger toutes les archives FDJ, y compris les périodes figées
-          --stats               Afficher le tableau complet des probabilités de chaque numéro
+          --stats               Afficher le tableau complet des probabilités de chaque numéro et la table des profils de grille
           --help, -h            Afficher cette aide
 
         TXT,
@@ -176,26 +235,36 @@ if ($tirages === []) {
     exit(1);
 }
 
+$profils = construireProfils();
+
+if ($options['backtest']) {
+    mt_srand($options['seed'] ?? random_int(1, PHP_INT_MAX));
+    afficherBacktest($tirages, $profils, $options);
+    echo PHP_EOL;
+    exit(0);
+}
+
 $statsBoules = calculerProbabilites($tirages, 'boules', NB_BOULES, $options['fenetre'], $options['poids_recent']);
 $statsChance = calculerProbabilites($tirages, 'chance', NB_CHANCE, $options['fenetre'], $options['poids_recent']);
 
-$grillePrincipale = meilleureGrille($statsBoules, $statsChance);
+$grillePrincipale = meilleureGrille($statsBoules, $statsChance, $profils, $options['pool']);
 $pTheorique       = probabiliteTheorique($tirages);
 
 afficherContexte($tirages, $options);
-afficherGrille(t('grille_principale'), $grillePrincipale, $statsBoules, $statsChance, $pTheorique);
+afficherGrille(t('grille_principale'), $grillePrincipale, $statsBoules, $statsChance, $pTheorique, $profils);
 
 if ($options['grilles'] > 0) {
     mt_srand($options['seed'] ?? random_int(1, PHP_INT_MAX));
     for ($i = 1; $i <= $options['grilles']; $i++) {
-        $grille = grillePonderee($statsBoules, $statsChance);
-        afficherGrille(t('grille_alternative', $i), $grille, $statsBoules, $statsChance, $pTheorique);
+        $grille = grillePonderee($statsBoules, $statsChance, $profils);
+        afficherGrille(t('grille_alternative', $i), $grille, $statsBoules, $statsChance, $pTheorique, $profils);
     }
 }
 
 if ($options['stats']) {
     afficherTableau(t('tableau_boules'), $statsBoules, $pTheorique);
     afficherTableau(t('tableau_chance'), $statsChance, 1 / NB_CHANCE);
+    afficherProfils($tirages, $profils);
 }
 
 echo PHP_EOL;
@@ -230,10 +299,12 @@ function lireOptions(array $argv): array
         'hors_ligne'   => false,
         'forcer_maj'   => false,
         'stats'        => false,
+        'backtest'     => false,
         'depuis'       => null,
         'jour'         => null,
         'fenetre'      => 100,
         'poids_recent' => 0.3,
+        'pool'         => TAILLE_POOL,
         'grilles'      => 0,
         'seed'         => null,
     ];
@@ -269,6 +340,10 @@ function lireOptions(array $argv): array
             $options['stats'] = true;
             continue;
         }
+        if ($arg === '--backtest') {
+            $options['backtest'] = true;
+            continue;
+        }
         if (!str_contains($arg, '=')) {
             continue;
         }
@@ -291,6 +366,9 @@ function lireOptions(array $argv): array
                 break;
             case '--recent-weight':
                 $options['poids_recent'] = min(1.0, max(0.0, (float) $valeur));
+                break;
+            case '--pool':
+                $options['pool'] = min(NB_BOULES, max(BOULES_PAR_GRILLE, (int) $valeur));
                 break;
             case '--grids':
                 $options['grilles'] = max(0, (int) $valeur);
@@ -562,35 +640,400 @@ function calculerProbabilites(array $tirages, string $type, int $max, int $fenet
     return $stats;
 }
 
-function meilleureGrille(array $statsBoules, array $statsChance): array
+function profilGrille(array $boules): array
 {
-    $boules = array_slice(array_keys($statsBoules), 0, BOULES_PAR_GRILLE);
-    sort($boules);
+    $pairs    = 0;
+    $suites   = 0;
+    $dizaines = [];
+    $somme    = 0;
+    $n        = count($boules);
+
+    for ($i = 0; $i < $n; $i++) {
+        $b = $boules[$i];
+        $somme += $b;
+        if ($b % 2 === 0) {
+            $pairs++;
+        }
+        if ($i > 0 && $b === $boules[$i - 1] + 1) {
+            $suites++;
+        }
+        $dizaines[intdiv($b - 1, 10)] = true;
+    }
 
     return [
-        'boules' => $boules,
+        'pairs'    => $pairs,
+        'suites'   => $suites,
+        'dizaines' => count($dizaines),
+        'somme'    => $somme,
+        'tranche'  => intdiv($somme, LARGEUR_SOMME),
+    ];
+}
+
+function cleProfil(array $profil): string
+{
+    return $profil['pairs'] . '|' . $profil['suites'] . '|' . $profil['dizaines'] . '|' . $profil['tranche'];
+}
+
+function construireProfils(): array
+{
+    $total      = 0;
+    $profils    = [];
+    $marginales = ['pairs' => [], 'suites' => [], 'dizaines' => [], 'sommes' => []];
+    $bits       = [];
+    for ($m = 0; $m < 32; $m++) {
+        $bits[$m] = substr_count(decbin($m), '1');
+    }
+
+    $n = NB_BOULES;
+    for ($a = 1; $a <= $n - 4; $a++) {
+        $pa = $a % 2 === 0 ? 1 : 0;
+        $da = 1 << intdiv($a - 1, 10);
+        for ($b = $a + 1; $b <= $n - 3; $b++) {
+            $pb = $pa + ($b % 2 === 0 ? 1 : 0);
+            $sb = $b === $a + 1 ? 1 : 0;
+            $db = $da | (1 << intdiv($b - 1, 10));
+            for ($c = $b + 1; $c <= $n - 2; $c++) {
+                $pc = $pb + ($c % 2 === 0 ? 1 : 0);
+                $sc = $sb + ($c === $b + 1 ? 1 : 0);
+                $dc = $db | (1 << intdiv($c - 1, 10));
+                for ($d = $c + 1; $d <= $n - 1; $d++) {
+                    $pd = $pc + ($d % 2 === 0 ? 1 : 0);
+                    $sd = $sc + ($d === $c + 1 ? 1 : 0);
+                    $dd = $dc | (1 << intdiv($d - 1, 10));
+                    $somme4 = $a + $b + $c + $d;
+                    for ($e = $d + 1; $e <= $n; $e++) {
+                        $pairs    = $pd + ($e % 2 === 0 ? 1 : 0);
+                        $suites   = $sd + ($e === $d + 1 ? 1 : 0);
+                        $dizaines = $bits[$dd | (1 << intdiv($e - 1, 10))];
+                        $somme    = $somme4 + $e;
+                        $tranche  = intdiv($somme, LARGEUR_SOMME);
+                        $cle      = $pairs . '|' . $suites . '|' . $dizaines . '|' . $tranche;
+
+                        $total++;
+                        $profils[$cle] = ($profils[$cle] ?? 0) + 1;
+                        $marginales['pairs'][$pairs]       = ($marginales['pairs'][$pairs] ?? 0) + 1;
+                        $marginales['suites'][$suites]     = ($marginales['suites'][$suites] ?? 0) + 1;
+                        $marginales['dizaines'][$dizaines] = ($marginales['dizaines'][$dizaines] ?? 0) + 1;
+                        $marginales['sommes'][$tranche]    = ($marginales['sommes'][$tranche] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+    }
+
+    foreach ($marginales as &$m) {
+        ksort($m);
+    }
+    unset($m);
+
+    $tries = $profils;
+    asort($tries);
+    $cumul = 0;
+    $seuil = 0;
+    foreach ($tries as $compte) {
+        $cumul += $compte;
+        $seuil  = $compte;
+        if ($cumul / $total >= SEUIL_ATYPIQUE) {
+            break;
+        }
+    }
+
+    return [
+        'total'      => $total,
+        'seuil'      => $seuil,
+        'profils'    => $profils,
+        'marginales' => $marginales,
+    ];
+}
+
+function frequenceProfil(array $profil, array $profils): float
+{
+    return ($profils['profils'][cleProfil($profil)] ?? 0) / $profils['total'];
+}
+
+function estTypique(array $profil, array $profils): bool
+{
+    return ($profils['profils'][cleProfil($profil)] ?? 0) > $profils['seuil'];
+}
+
+function motifPopulaire(array $boules): ?string
+{
+    if (max($boules) <= MAX_DATE) {
+        return 'motif_dates';
+    }
+
+    $pas = $boules[1] - $boules[0];
+    for ($i = 2; $i < count($boules); $i++) {
+        if ($boules[$i] - $boules[$i - 1] !== $pas) {
+            return null;
+        }
+    }
+
+    return 'motif_progression';
+}
+
+function grilleAcceptable(array $boules, array $profils): bool
+{
+    return estTypique(profilGrille($boules), $profils) && motifPopulaire($boules) === null;
+}
+
+function combinaisonsDe(array $elements, int $k): Generator
+{
+    $n = count($elements);
+    if ($k > $n) {
+        return;
+    }
+    $indices = range(0, $k - 1);
+    while (true) {
+        yield array_map(fn(int $i) => $elements[$i], $indices);
+        $i = $k - 1;
+        while ($i >= 0 && $indices[$i] === $n - $k + $i) {
+            $i--;
+        }
+        if ($i < 0) {
+            return;
+        }
+        $indices[$i]++;
+        for ($j = $i + 1; $j < $k; $j++) {
+            $indices[$j] = $indices[$j - 1] + 1;
+        }
+    }
+}
+
+function meilleureGrille(array $statsBoules, array $statsChance, array $profils, int $taillePool): array
+{
+    $scores = array_map(fn(array $s) => $s['score'], $statsBoules);
+
+    return [
+        'boules' => meilleuresBoules($scores, $profils, $taillePool),
         'chance' => array_key_first($statsChance),
     ];
 }
 
-function grillePonderee(array $statsBoules, array $statsChance): array
+function meilleuresBoules(array $scores, array $profils, int $taillePool): array
 {
-    $boules = [];
-    $poids  = array_map(fn(array $s) => $s['score'], $statsBoules);
+    arsort($scores);
+    $pool   = array_slice(array_keys($scores), 0, $taillePool);
+    $defaut = array_slice($pool, 0, BOULES_PAR_GRILLE);
+    sort($defaut);
 
-    while (count($boules) < BOULES_PAR_GRILLE && $poids !== []) {
-        $numero = tirerPondere($poids);
-        $boules[] = $numero;
-        unset($poids[$numero]);
+    $meilleure     = null;
+    $meilleurScore = -1.0;
+    $meilleureFreq = -1.0;
+
+    foreach (combinaisonsDe($pool, BOULES_PAR_GRILLE) as $boules) {
+        sort($boules);
+        if (!grilleAcceptable($boules, $profils)) {
+            continue;
+        }
+        $score = array_sum(array_map(fn(int $b) => $scores[$b], $boules));
+        $freq  = frequenceProfil(profilGrille($boules), $profils);
+        if ($score > $meilleurScore || ($score === $meilleurScore && $freq > $meilleureFreq)) {
+            $meilleure     = $boules;
+            $meilleurScore = $score;
+            $meilleureFreq = $freq;
+        }
     }
-    sort($boules);
 
+    return $meilleure ?? $defaut;
+}
+
+function grillePonderee(array $statsBoules, array $statsChance, array $profils): array
+{
+    $poidsBoules = array_map(fn(array $s) => $s['score'], $statsBoules);
     $poidsChance = array_map(fn(array $s) => $s['score'], $statsChance);
 
     return [
-        'boules' => $boules,
+        'boules' => boulesPonderees($poidsBoules, $profils, true),
         'chance' => tirerPondere($poidsChance),
     ];
+}
+
+function boulesPonderees(array $poidsBoules, array $profils, bool $filtrer): array
+{
+    $boules = [];
+
+    for ($essai = 0; $essai < ESSAIS_TIRAGE; $essai++) {
+        $boules = [];
+        $poids  = $poidsBoules;
+        while (count($boules) < BOULES_PAR_GRILLE && $poids !== []) {
+            $numero   = tirerPondere($poids);
+            $boules[] = $numero;
+            unset($poids[$numero]);
+        }
+        sort($boules);
+        if (!$filtrer || grilleAcceptable($boules, $profils)) {
+            break;
+        }
+    }
+
+    return $boules;
+}
+
+function topBoules(array $scores): array
+{
+    arsort($scores);
+    $boules = array_slice(array_keys($scores), 0, BOULES_PAR_GRILLE);
+    sort($boules);
+
+    return $boules;
+}
+
+function afficherBacktest(array $tirages, array $profils, array $options): void
+{
+    $fenetre     = $options['fenetre'];
+    $poidsRecent = $options['poids_recent'];
+    $global      = array_fill(1, NB_BOULES, 0);
+    $dernier     = array_fill(1, NB_BOULES, -1);
+    $chanceGlob  = array_fill(1, NB_CHANCE, 0);
+    $chanceDern  = array_fill(1, NB_CHANCE, -1);
+    $recents     = [];
+    $nGlobal     = 0;
+    $uniformes   = array_fill(1, NB_BOULES, 1.0);
+
+    $methodes = ['aleatoire', 'chaud', 'recent', 'mix', 'froid', 'recommande', 'echant'];
+    $resultats = [];
+    foreach ($methodes as $m) {
+        $resultats[$m] = ['n' => 0, 'trouves' => 0, 'ge2' => 0, 'ge3' => 0];
+    }
+    $chance = ['n' => 0, 'aleatoire' => 0, 'chaud' => 0, 'froid' => 0];
+
+    foreach ($tirages as $position => $tirage) {
+        if (count($tirage['boules']) === BOULES_PAR_GRILLE && $nGlobal >= BACKTEST_MIN) {
+            $pGlobal = array_map(fn(int $v) => $v / $nGlobal, $global);
+            $compteR = array_fill(1, NB_BOULES, 0);
+            foreach ($recents as $boules) {
+                foreach ($boules as $b) {
+                    $compteR[$b]++;
+                }
+            }
+            $nRecent = count($recents);
+            $pRecent = array_map(fn(int $v) => $nRecent > 0 ? $v / $nRecent : 0.0, $compteR);
+            $poids   = $nRecent > 0 ? $poidsRecent : 0.0;
+            $mix     = [];
+            $ecarts  = [];
+            foreach ($pGlobal as $n => $v) {
+                $mix[$n]    = (1 - $poids) * $v + $poids * $pRecent[$n];
+                $ecarts[$n] = $position - $dernier[$n];
+            }
+
+            $grilles = [
+                'chaud'      => [topBoules($pGlobal)],
+                'recent'     => [topBoules($pRecent)],
+                'mix'        => [topBoules($mix)],
+                'froid'      => [topBoules($ecarts)],
+                'recommande' => [meilleuresBoules($mix, $profils, $options['pool'])],
+                'aleatoire'  => [],
+                'echant'     => [],
+            ];
+            for ($r = 0; $r < BACKTEST_REP; $r++) {
+                $grilles['aleatoire'][] = boulesPonderees($uniformes, $profils, false);
+                $grilles['echant'][]    = boulesPonderees($mix, $profils, true);
+            }
+
+            foreach ($grilles as $m => $liste) {
+                foreach ($liste as $grille) {
+                    $k = count(array_intersect($grille, $tirage['boules']));
+                    $resultats[$m]['n']++;
+                    $resultats[$m]['trouves'] += $k;
+                    if ($k >= 2) {
+                        $resultats[$m]['ge2']++;
+                    }
+                    if ($k >= 3) {
+                        $resultats[$m]['ge3']++;
+                    }
+                }
+            }
+
+            if ($tirage['chance'] !== null && array_sum($chanceGlob) >= BACKTEST_MIN) {
+                $chance['n']++;
+                if (mt_rand(1, NB_CHANCE) === $tirage['chance']) {
+                    $chance['aleatoire']++;
+                }
+                $tri = $chanceGlob;
+                arsort($tri);
+                if (array_key_first($tri) === $tirage['chance']) {
+                    $chance['chaud']++;
+                }
+                $ecartsChance = [];
+                foreach ($chanceDern as $n => $d) {
+                    $ecartsChance[$n] = $position - $d;
+                }
+                arsort($ecartsChance);
+                if (array_key_first($ecartsChance) === $tirage['chance']) {
+                    $chance['froid']++;
+                }
+            }
+        }
+
+        $nGlobal++;
+        foreach ($tirage['boules'] as $b) {
+            $global[$b]++;
+            $dernier[$b] = $position;
+        }
+        if ($fenetre > 0) {
+            $recents[] = $tirage['boules'];
+            if (count($recents) > $fenetre) {
+                array_shift($recents);
+            }
+        }
+        if ($tirage['chance'] !== null) {
+            $chanceGlob[$tirage['chance']]++;
+            $chanceDern[$tirage['chance']] = $position;
+        }
+    }
+
+    $total    = $profils['total'];
+    $theorie  = [];
+    for ($k = 0; $k <= BOULES_PAR_GRILLE; $k++) {
+        $theorie[$k] = combinaisons(BOULES_PAR_GRILLE, $k) * combinaisons(NB_BOULES - BOULES_PAR_GRILLE, BOULES_PAR_GRILLE - $k) / $total;
+    }
+    $moyenne  = BOULES_PAR_GRILLE * BOULES_PAR_GRILLE / NB_BOULES;
+    $ge2      = $theorie[2] + $theorie[3] + $theorie[4] + $theorie[5];
+    $ge3      = $theorie[3] + $theorie[4] + $theorie[5];
+    $nTirages = $resultats['chaud']['n'];
+    $entete   = TEXTES[langue()]['bt_entete'];
+
+    echo PHP_EOL . t('bt_titre', $nTirages) . PHP_EOL . PHP_EOL;
+    echo sprintf('  %-52s %8s %12s %9s %9s', ...$entete) . PHP_EOL;
+    echo sprintf('  %-52s %8s %12s %9s %9s', t('bt_theorie'), '', nombre($moyenne, 4), pourcent($ge2, 3), pourcent($ge3, 3)) . PHP_EOL;
+    foreach ($resultats as $m => $r) {
+        echo sprintf(
+            '  %-52s %8d %12s %9s %9s',
+            t('bt_' . $m),
+            $r['n'],
+            nombre($r['trouves'] / $r['n'], 4),
+            pourcent($r['ge2'] / $r['n'], 3),
+            pourcent($r['ge3'] / $r['n'], 3)
+        ) . PHP_EOL;
+    }
+
+    $variance  = $moyenne * (1 - BOULES_PAR_GRILLE / NB_BOULES) * (NB_BOULES - BOULES_PAR_GRILLE) / (NB_BOULES - 1);
+    $ecartType = sqrt($variance / max(1, $nTirages));
+    echo PHP_EOL . t('bt_bande', $nTirages, nombre($moyenne - 2 * $ecartType, 4), nombre($moyenne + 2 * $ecartType, 4)) . PHP_EOL;
+
+    if ($chance['n'] > 0) {
+        echo t(
+            'bt_chance',
+            $chance['n'],
+            pourcent($chance['aleatoire'] / $chance['n']),
+            pourcent($chance['chaud'] / $chance['n']),
+            pourcent($chance['froid'] / $chance['n'])
+        ) . PHP_EOL;
+    }
+}
+
+function combinaisons(int $n, int $k): float
+{
+    if ($k < 0 || $k > $n) {
+        return 0.0;
+    }
+    $resultat = 1.0;
+    for ($i = 1; $i <= $k; $i++) {
+        $resultat = $resultat * ($n - $k + $i) / $i;
+    }
+
+    return round($resultat);
 }
 
 function tirerPondere(array $poids): int
@@ -622,20 +1065,28 @@ function afficherContexte(array $tirages, array $options): void
     $fenetre     = $options['fenetre'] > 0
         ? t('ctx_fenetre_active', $options['fenetre'], nombre($options['poids_recent'], 1))
         : t('ctx_fenetre_inactive');
+    $typicite    = t('ctx_typicite_active', pourcent(SEUIL_ATYPIQUE, 0), $options['pool']);
 
     echo PHP_EOL;
     echo t('ctx_tirages', count($tirages), $premier, $dernier) . PHP_EOL;
     echo t('ctx_chance', compterAvecChance($tirages)) . PHP_EOL;
     echo t('ctx_jours', $repartition) . PHP_EOL;
     echo t('ctx_fenetre', $fenetre) . PHP_EOL;
+    echo t('ctx_typicite', $typicite) . PHP_EOL;
 }
 
-function afficherGrille(string $titre, array $grille, array $statsBoules, array $statsChance, float $attenduBoule): void
+function afficherGrille(string $titre, array $grille, array $statsBoules, array $statsChance, float $attenduBoule, array $profils): void
 {
     $boules = implode(' - ', array_map(fn($b) => sprintf('%02d', $b), $grille['boules']));
+    $profil = profilGrille($grille['boules']);
+    $motif  = motifPopulaire($grille['boules']);
 
     echo PHP_EOL . $titre . PHP_EOL;
     echo t('grille_ligne', $boules, $grille['chance']) . PHP_EOL;
+    echo t('grille_profil', $profil['pairs'], $profil['suites'], $profil['dizaines'], $profil['somme'], pourcent(frequenceProfil($profil, $profils))) . PHP_EOL;
+    if ($motif !== null) {
+        echo t('grille_populaire', t($motif)) . PHP_EOL;
+    }
     echo t('grille_detail', pourcent($attenduBoule)) . PHP_EOL;
     foreach ($grille['boules'] as $boule) {
         $s = $statsBoules[$boule];
@@ -672,12 +1123,46 @@ function afficherTableau(string $titre, array $stats, float $attendu): void
     }
 }
 
+function afficherProfils(array $tirages, array $profils): void
+{
+    $observe = ['pairs' => [], 'suites' => [], 'dizaines' => [], 'sommes' => []];
+    $n       = 0;
+
+    foreach ($tirages as $tirage) {
+        if (count($tirage['boules']) !== BOULES_PAR_GRILLE) {
+            continue;
+        }
+        $n++;
+        $p = profilGrille($tirage['boules']);
+        $observe['pairs'][$p['pairs']]       = ($observe['pairs'][$p['pairs']] ?? 0) + 1;
+        $observe['suites'][$p['suites']]     = ($observe['suites'][$p['suites']] ?? 0) + 1;
+        $observe['dizaines'][$p['dizaines']] = ($observe['dizaines'][$p['dizaines']] ?? 0) + 1;
+        $observe['sommes'][$p['tranche']]    = ($observe['sommes'][$p['tranche']] ?? 0) + 1;
+    }
+
+    $entete = TEXTES[langue()]['profils_entete'];
+
+    echo PHP_EOL . t('profils_titre', number_format($profils['total'], 0, '', ' '), $n) . PHP_EOL;
+
+    foreach (['pairs', 'suites', 'dizaines', 'sommes'] as $axe) {
+        echo PHP_EOL . '  ' . t('profil_' . $axe) . PHP_EOL;
+        echo sprintf('  %-10s %12s %12s', ...$entete) . PHP_EOL;
+        foreach ($profils['marginales'][$axe] as $valeur => $compte) {
+            $libelle = $axe === 'sommes'
+                ? ($valeur * LARGEUR_SOMME) . '-' . ($valeur * LARGEUR_SOMME + LARGEUR_SOMME - 1)
+                : (string) $valeur;
+            $obs = $n > 0 ? ($observe[$axe][$valeur] ?? 0) / $n : 0.0;
+            echo sprintf('  %-10s %12s %12s', $libelle, pourcent($compte / $profils['total']), pourcent($obs)) . PHP_EOL;
+        }
+    }
+}
+
 function nombre(float $valeur, int $decimales): string
 {
     return number_format($valeur, $decimales, t('sep_decimal'), '');
 }
 
-function pourcent(float $valeur): string
+function pourcent(float $valeur, int $decimales = 2): string
 {
-    return nombre($valeur * 100, 2) . ' %';
+    return nombre($valeur * 100, $decimales) . ' %';
 }
