@@ -22,29 +22,30 @@ All draws since 1976 are used for ball frequencies, including the 1976-2008 game
 
 On every run the script downloads the FDJ archives published at https://www.fdj.fr/jeux-de-tirage/loto/historique, extracts the CSV from each ZIP and writes it to `csv/` only when its content differs from the local file. The four closed periods are downloaded only when the local file is missing; the current period (`2019-aujourdhui.csv`) is checked on every run. If the download fails, the script says so and continues with the local files.
 
-Requires the PHP `curl` and `zip` extensions. Use `--hors-ligne` to skip the update, `--forcer-maj` to re-download every archive.
+Requires the PHP `curl` and `zip` extensions. Use `--offline` to skip the update, `--force-update` to re-download every archive.
 
 ## Usage
 
 ```bash
 php index.php
-php index.php --jour=SAMEDI --depuis=01/01/2019
-php index.php --grilles=5 --seed=42
+php index.php --day=SATURDAY --since=01/01/2019
+php index.php --grids=5 --seed=42
 php index.php --stats
-php index.php --aide
+php index.php --help
 ```
 
 | Option | Purpose |
 | --- | --- |
-| `--depuis=dd/mm/YYYY` | Keep only draws from this date onwards |
-| `--jour=LUNDI` | Keep only draws of one weekday |
-| `--fenetre=N` | Number of most recent draws for the recent component (default 100, 0 to disable) |
-| `--poids-recent=X` | Weight of the recent component between 0 and 1 (default 0.3) |
-| `--grilles=N` | Generate N alternative grids sampled proportionally to the probabilities |
+| `--since=dd/mm/YYYY` | Keep only draws from this date onwards (`YYYY-mm-dd` also accepted) |
+| `--day=MONDAY` | Keep only draws of one weekday (English or French name, e.g. `SATURDAY` or `SAMEDI`) |
+| `--window=N` | Number of most recent draws for the recent component (default 100, 0 to disable) |
+| `--recent-weight=X` | Weight of the recent component between 0 and 1 (default 0.3) |
+| `--grids=N` | Generate N alternative grids sampled proportionally to the probabilities |
 | `--seed=N` | Make the alternative grids reproducible |
-| `--hors-ligne` | Skip the FDJ update and use only the local files |
-| `--forcer-maj` | Re-download every FDJ archive, including closed periods |
+| `--offline` | Skip the FDJ update and use only the local files |
+| `--force-update` | Re-download every FDJ archive, including closed periods |
 | `--stats` | Print the full table of the 49 balls and 10 lucky numbers |
+| `--help`, `-h` | Show the built-in help |
 
 ## Method
 

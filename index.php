@@ -25,6 +25,13 @@ const JOURS = [
     'VE' => 'VENDREDI',
     'SA' => 'SAMEDI',
     'DI' => 'DIMANCHE',
+    'MONDAY'    => 'LUNDI',
+    'TUESDAY'   => 'MARDI',
+    'WEDNESDAY' => 'MERCREDI',
+    'THURSDAY'  => 'JEUDI',
+    'FRIDAY'    => 'VENDREDI',
+    'SATURDAY'  => 'SAMEDI',
+    'SUNDAY'    => 'DIMANCHE',
 ];
 
 $options = lireOptions($argv ?? []);
@@ -92,15 +99,15 @@ function lireOptions(array $argv): array
     ];
 
     foreach (array_slice($argv, 1) as $arg) {
-        if ($arg === '--aide' || $arg === '-h' || $arg === '--help') {
+        if ($arg === '--help' || $arg === '-h') {
             $options['aide'] = true;
             continue;
         }
-        if ($arg === '--hors-ligne') {
+        if ($arg === '--offline') {
             $options['hors_ligne'] = true;
             continue;
         }
-        if ($arg === '--forcer-maj') {
+        if ($arg === '--force-update') {
             $options['forcer_maj'] = true;
             continue;
         }
@@ -113,25 +120,25 @@ function lireOptions(array $argv): array
         }
         [$cle, $valeur] = explode('=', $arg, 2);
         switch ($cle) {
-            case '--depuis':
-                $date = DateTimeImmutable::createFromFormat('!d/m/Y', $valeur);
+            case '--since':
+                $date = DateTimeImmutable::createFromFormat('!d/m/Y', $valeur) ?: DateTimeImmutable::createFromFormat('!Y-m-d', $valeur);
                 if ($date === false) {
-                    fwrite(STDERR, 'Format de --depuis invalide, attendu jj/mm/AAAA.' . PHP_EOL);
+                    fwrite(STDERR, 'Invalid --since format, expected dd/mm/YYYY or YYYY-mm-dd.' . PHP_EOL);
                     exit(1);
                 }
                 $options['depuis'] = $date;
                 break;
-            case '--jour':
+            case '--day':
                 $jour = strtoupper(trim($valeur));
                 $options['jour'] = JOURS[$jour] ?? $jour;
                 break;
-            case '--fenetre':
+            case '--window':
                 $options['fenetre'] = max(0, (int) $valeur);
                 break;
-            case '--poids-recent':
+            case '--recent-weight':
                 $options['poids_recent'] = min(1.0, max(0.0, (float) $valeur));
                 break;
-            case '--grilles':
+            case '--grids':
                 $options['grilles'] = max(0, (int) $valeur);
                 break;
             case '--seed':
@@ -146,18 +153,18 @@ function lireOptions(array $argv): array
 function afficherAide(): void
 {
     echo <<<TXT
-    Usage : php index.php [options]
+    Usage: php index.php [options]
 
-      --depuis=jj/mm/AAAA   Ne garde que les tirages à partir de cette date
-      --jour=LUNDI          Ne garde que les tirages d'un jour (LUNDI, MERCREDI, SAMEDI…)
-      --fenetre=N           Nombre de derniers tirages pour la composante récente (défaut 100, 0 = désactivée)
-      --poids-recent=X      Poids de la composante récente entre 0 et 1 (défaut 0.3)
-      --grilles=N           Génère N grilles alternatives tirées au sort selon les probabilités
-      --seed=N              Graine pour rendre les grilles alternatives reproductibles
-      --hors-ligne          N'interroge pas le site FDJ, utilise uniquement les fichiers présents dans csv/
-      --forcer-maj          Retélécharge toutes les archives FDJ, y compris les périodes figées
-      --stats               Affiche le tableau complet des probabilités par numéro
-      --aide                Affiche cette aide
+      --since=dd/mm/YYYY    Keep only draws from this date onwards (YYYY-mm-dd also accepted)
+      --day=SATURDAY        Keep only draws of one weekday (MONDAY, WEDNESDAY, SATURDAY… or LUNDI, MERCREDI, SAMEDI…)
+      --window=N            Number of most recent draws for the recent component (default 100, 0 = disabled)
+      --recent-weight=X     Weight of the recent component between 0 and 1 (default 0.3)
+      --grids=N             Generate N alternative grids sampled proportionally to the probabilities
+      --seed=N              Seed to make the alternative grids reproducible
+      --offline             Do not query the FDJ website, use only the files present in csv/
+      --force-update        Re-download every FDJ archive, including closed periods
+      --stats               Print the full probability table for every number
+      --help, -h            Show this help
 
     TXT;
 }
