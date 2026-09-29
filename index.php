@@ -8,6 +8,8 @@ const BOULES_PAR_GRILLE = 5;
 const DOSSIER_CSV       = __DIR__ . '/csv';
 const URL_FDJ           = 'https://www.sto.api.fdj.fr/anonymous/service-draw-info/v3/documentations/1a2b3c4d-9876-4562-b3fc-2c963f66af';
 const DELAI_HTTP        = 30;
+const LANGUE_DEFAUT     = 'en';
+const LANGUES           = ['en', 'fr'];
 
 const ARCHIVES = [
     '1976-2008.csv'       => ['id' => 'l6', 'fixe' => true],
@@ -34,6 +36,121 @@ const JOURS = [
     'SUNDAY'    => 'DIMANCHE',
 ];
 
+const JOURS_EN = [
+    'LUNDI'    => 'MONDAY',
+    'MARDI'    => 'TUESDAY',
+    'MERCREDI' => 'WEDNESDAY',
+    'JEUDI'    => 'THURSDAY',
+    'VENDREDI' => 'FRIDAY',
+    'SAMEDI'   => 'SATURDAY',
+    'DIMANCHE' => 'SUNDAY',
+];
+
+const TEXTES = [
+    'en' => [
+        'sep_decimal'          => '.',
+        'format_date'          => 'd/m/Y',
+        'err_langue'           => 'Invalid --lang value, expected en or fr.',
+        'err_since'            => 'Invalid --since format, expected dd/mm/YYYY or YYYY-mm-dd.',
+        'err_aucun_tirage'     => 'No readable draw in %s',
+        'err_aucun_filtre'     => 'No draw matches the requested filters.',
+        'err_dossier'          => 'Unable to create %s',
+        'maj_titre'            => 'Updating FDJ data',
+        'maj_fige'             => '  %s: closed period, kept',
+        'maj_echec'            => '  %s: download failed, %s',
+        'maj_local_conserve'   => 'local file kept',
+        'maj_absent'           => 'file missing',
+        'maj_a_jour'           => '  %s: already up to date',
+        'maj_ecriture'         => '  %s: write failed',
+        'maj_ecrit'            => '  %s: %s (%d draws)',
+        'maj_mis_a_jour'       => 'updated',
+        'maj_cree'             => 'created',
+        'ctx_tirages'          => 'Draws analysed: %d (from %s to %s)',
+        'ctx_chance'           => 'With lucky number: %d',
+        'ctx_jours'            => 'Breakdown by weekday: %s',
+        'ctx_fenetre'          => 'Recent window: %s',
+        'ctx_fenetre_active'   => '%d draws, weight %s',
+        'ctx_fenetre_inactive' => 'disabled',
+        'grille_principale'    => 'Most probable grid',
+        'grille_alternative'   => 'Alternative grid %d',
+        'grille_ligne'         => '  %s  +  lucky %d',
+        'grille_detail'        => '  Ball details (observed vs theoretical probability %s):',
+        'grille_boule'         => '    %02d: %d hits, p=%s, recent=%s, gap=%d draws',
+        'grille_chance'        => '    lucky %d: %d hits, p=%s (theoretical %s), recent=%s, gap=%d draws',
+        'tableau_boules'       => 'Balls',
+        'tableau_chance'       => 'Lucky number',
+        'tableau_titre'        => '%s (theoretical probability %s)',
+        'tableau_entete'       => ['No.', 'Hits', 'P global', 'P recent', 'Score', 'Gap'],
+        'aide'                 => <<<TXT
+        Usage: php index.php [options]
+
+          --lang=en|fr          Output language (default en)
+          --since=dd/mm/YYYY    Keep only draws from this date onwards (YYYY-mm-dd also accepted)
+          --day=SATURDAY        Keep only draws of one weekday (MONDAY, WEDNESDAY, SATURDAY… or LUNDI, MERCREDI, SAMEDI…)
+          --window=N            Number of most recent draws for the recent component (default 100, 0 = disabled)
+          --recent-weight=X     Weight of the recent component between 0 and 1 (default 0.3)
+          --grids=N             Generate N alternative grids sampled proportionally to the probabilities
+          --seed=N              Seed to make the alternative grids reproducible
+          --offline             Do not query the FDJ website, use only the files present in csv/
+          --force-update        Re-download every FDJ archive, including closed periods
+          --stats               Print the full probability table for every number
+          --help, -h            Show this help
+
+        TXT,
+    ],
+    'fr' => [
+        'sep_decimal'          => ',',
+        'format_date'          => 'd/m/Y',
+        'err_langue'           => 'Valeur --lang invalide, attendu en ou fr.',
+        'err_since'            => 'Format --since invalide, attendu jj/mm/AAAA ou AAAA-mm-jj.',
+        'err_aucun_tirage'     => 'Aucun tirage lisible dans %s',
+        'err_aucun_filtre'     => 'Aucun tirage ne correspond aux filtres demandés.',
+        'err_dossier'          => 'Impossible de créer %s',
+        'maj_titre'            => 'Mise à jour des données FDJ',
+        'maj_fige'             => '  %s : période figée, conservé',
+        'maj_echec'            => '  %s : téléchargement impossible, %s',
+        'maj_local_conserve'   => 'fichier local conservé',
+        'maj_absent'           => 'fichier absent',
+        'maj_a_jour'           => '  %s : déjà à jour',
+        'maj_ecriture'         => '  %s : écriture impossible',
+        'maj_ecrit'            => '  %s : %s (%d tirages)',
+        'maj_mis_a_jour'       => 'mis à jour',
+        'maj_cree'             => 'créé',
+        'ctx_tirages'          => 'Tirages analysés : %d (du %s au %s)',
+        'ctx_chance'           => 'Avec numéro chance : %d',
+        'ctx_jours'            => 'Répartition par jour : %s',
+        'ctx_fenetre'          => 'Fenêtre récente : %s',
+        'ctx_fenetre_active'   => '%d tirages, poids %s',
+        'ctx_fenetre_inactive' => 'désactivée',
+        'grille_principale'    => 'Grille la plus probable',
+        'grille_alternative'   => 'Grille alternative %d',
+        'grille_ligne'         => '  %s  +  chance %d',
+        'grille_detail'        => '  Détail des boules (probabilité observée vs théorique %s) :',
+        'grille_boule'         => '    %02d : %d sorties, p=%s, récent=%s, écart=%d tirages',
+        'grille_chance'        => '    chance %d : %d sorties, p=%s (théorique %s), récent=%s, écart=%d tirages',
+        'tableau_boules'       => 'Boules',
+        'tableau_chance'       => 'Numéro chance',
+        'tableau_titre'        => '%s (probabilité théorique %s)',
+        'tableau_entete'       => ['N°', 'Sorties', 'P globale', 'P récente', 'Score', 'Écart'],
+        'aide'                 => <<<TXT
+        Usage : php index.php [options]
+
+          --lang=en|fr          Langue d'affichage (en par défaut)
+          --since=jj/mm/AAAA    Ne garder que les tirages à partir de cette date (AAAA-mm-jj accepté aussi)
+          --day=SAMEDI          Ne garder que les tirages d'un jour de la semaine (LUNDI, MERCREDI, SAMEDI… ou MONDAY, WEDNESDAY, SATURDAY…)
+          --window=N            Nombre de tirages les plus récents pour la composante récente (100 par défaut, 0 = désactivée)
+          --recent-weight=X     Poids de la composante récente entre 0 et 1 (0.3 par défaut)
+          --grids=N             Générer N grilles alternatives tirées proportionnellement aux probabilités
+          --seed=N              Graine pour rendre les grilles alternatives reproductibles
+          --offline             Ne pas interroger le site FDJ, utiliser uniquement les fichiers présents dans csv/
+          --force-update        Retélécharger toutes les archives FDJ, y compris les périodes figées
+          --stats               Afficher le tableau complet des probabilités de chaque numéro
+          --help, -h            Afficher cette aide
+
+        TXT,
+    ],
+];
+
 $options = lireOptions($argv ?? []);
 
 if ($options['aide']) {
@@ -48,14 +165,14 @@ if (!$options['hors_ligne']) {
 $tirages = chargerTirages(DOSSIER_CSV);
 
 if ($tirages === []) {
-    fwrite(STDERR, 'Aucun tirage lisible dans ' . DOSSIER_CSV . PHP_EOL);
+    fwrite(STDERR, t('err_aucun_tirage', DOSSIER_CSV) . PHP_EOL);
     exit(1);
 }
 
 $tirages = filtrerTirages($tirages, $options['depuis'], $options['jour']);
 
 if ($tirages === []) {
-    fwrite(STDERR, 'Aucun tirage ne correspond aux filtres demandés.' . PHP_EOL);
+    fwrite(STDERR, t('err_aucun_filtre') . PHP_EOL);
     exit(1);
 }
 
@@ -66,22 +183,45 @@ $grillePrincipale = meilleureGrille($statsBoules, $statsChance);
 $pTheorique       = probabiliteTheorique($tirages);
 
 afficherContexte($tirages, $options);
-afficherGrille('Grille la plus probable', $grillePrincipale, $statsBoules, $statsChance, $pTheorique);
+afficherGrille(t('grille_principale'), $grillePrincipale, $statsBoules, $statsChance, $pTheorique);
 
 if ($options['grilles'] > 0) {
     mt_srand($options['seed'] ?? random_int(1, PHP_INT_MAX));
     for ($i = 1; $i <= $options['grilles']; $i++) {
         $grille = grillePonderee($statsBoules, $statsChance);
-        afficherGrille('Grille alternative ' . $i, $grille, $statsBoules, $statsChance, $pTheorique);
+        afficherGrille(t('grille_alternative', $i), $grille, $statsBoules, $statsChance, $pTheorique);
     }
 }
 
 if ($options['stats']) {
-    afficherTableau('Boules', $statsBoules, $pTheorique);
-    afficherTableau('Numéro chance', $statsChance, 1 / NB_CHANCE);
+    afficherTableau(t('tableau_boules'), $statsBoules, $pTheorique);
+    afficherTableau(t('tableau_chance'), $statsChance, 1 / NB_CHANCE);
 }
 
-afficherRappelTheorique();
+echo PHP_EOL;
+
+function langue(?string $nouvelle = null): string
+{
+    static $langue = LANGUE_DEFAUT;
+
+    if ($nouvelle !== null) {
+        $langue = $nouvelle;
+    }
+
+    return $langue;
+}
+
+function t(string $cle, mixed ...$args): string
+{
+    $texte = TEXTES[langue()][$cle] ?? TEXTES[LANGUE_DEFAUT][$cle] ?? $cle;
+
+    return $args === [] ? $texte : sprintf($texte, ...$args);
+}
+
+function nomJour(string $jour): string
+{
+    return langue() === 'fr' ? $jour : (JOURS_EN[$jour] ?? $jour);
+}
 
 function lireOptions(array $argv): array
 {
@@ -98,7 +238,21 @@ function lireOptions(array $argv): array
         'seed'         => null,
     ];
 
-    foreach (array_slice($argv, 1) as $arg) {
+    $arguments = array_slice($argv, 1);
+
+    foreach ($arguments as $arg) {
+        if (!str_starts_with($arg, '--lang=')) {
+            continue;
+        }
+        $valeur = strtolower(trim(substr($arg, 7)));
+        if (!in_array($valeur, LANGUES, true)) {
+            fwrite(STDERR, t('err_langue') . PHP_EOL);
+            exit(1);
+        }
+        langue($valeur);
+    }
+
+    foreach ($arguments as $arg) {
         if ($arg === '--help' || $arg === '-h') {
             $options['aide'] = true;
             continue;
@@ -123,7 +277,7 @@ function lireOptions(array $argv): array
             case '--since':
                 $date = DateTimeImmutable::createFromFormat('!d/m/Y', $valeur) ?: DateTimeImmutable::createFromFormat('!Y-m-d', $valeur);
                 if ($date === false) {
-                    fwrite(STDERR, 'Invalid --since format, expected dd/mm/YYYY or YYYY-mm-dd.' . PHP_EOL);
+                    fwrite(STDERR, t('err_since') . PHP_EOL);
                     exit(1);
                 }
                 $options['depuis'] = $date;
@@ -152,58 +306,44 @@ function lireOptions(array $argv): array
 
 function afficherAide(): void
 {
-    echo <<<TXT
-    Usage: php index.php [options]
-
-      --since=dd/mm/YYYY    Keep only draws from this date onwards (YYYY-mm-dd also accepted)
-      --day=SATURDAY        Keep only draws of one weekday (MONDAY, WEDNESDAY, SATURDAY… or LUNDI, MERCREDI, SAMEDI…)
-      --window=N            Number of most recent draws for the recent component (default 100, 0 = disabled)
-      --recent-weight=X     Weight of the recent component between 0 and 1 (default 0.3)
-      --grids=N             Generate N alternative grids sampled proportionally to the probabilities
-      --seed=N              Seed to make the alternative grids reproducible
-      --offline             Do not query the FDJ website, use only the files present in csv/
-      --force-update        Re-download every FDJ archive, including closed periods
-      --stats               Print the full probability table for every number
-      --help, -h            Show this help
-
-    TXT;
+    echo t('aide');
 }
 
 function mettreAJourCsv(string $dossier, bool $forcer): void
 {
     if (!is_dir($dossier) && !mkdir($dossier, 0775, true)) {
-        fwrite(STDERR, 'Impossible de créer ' . $dossier . PHP_EOL);
+        fwrite(STDERR, t('err_dossier', $dossier) . PHP_EOL);
         return;
     }
 
-    echo PHP_EOL . 'Mise à jour des données FDJ' . PHP_EOL;
+    echo PHP_EOL . t('maj_titre') . PHP_EOL;
 
     foreach (ARCHIVES as $nom => $archive) {
         $cible = $dossier . '/' . $nom;
         if ($archive['fixe'] && !$forcer && is_file($cible)) {
-            echo '  ' . $nom . ' : période figée, conservé' . PHP_EOL;
+            echo t('maj_fige', $nom) . PHP_EOL;
             continue;
         }
 
         $contenu = telechargerCsv(URL_FDJ . $archive['id']);
         if ($contenu === null) {
-            echo '  ' . $nom . ' : téléchargement impossible, ' . (is_file($cible) ? 'fichier local conservé' : 'fichier absent') . PHP_EOL;
+            echo t('maj_echec', $nom, t(is_file($cible) ? 'maj_local_conserve' : 'maj_absent')) . PHP_EOL;
             continue;
         }
 
         if (is_file($cible) && hash_file('sha256', $cible) === hash('sha256', $contenu)) {
-            echo '  ' . $nom . ' : déjà à jour' . PHP_EOL;
+            echo t('maj_a_jour', $nom) . PHP_EOL;
             continue;
         }
 
         $existait = is_file($cible);
         if (file_put_contents($cible, $contenu) === false) {
-            echo '  ' . $nom . ' : écriture impossible' . PHP_EOL;
+            echo t('maj_ecriture', $nom) . PHP_EOL;
             continue;
         }
 
         $lignes = max(0, substr_count($contenu, "\n") - 1);
-        echo '  ' . $nom . ' : ' . ($existait ? 'mis à jour' : 'créé') . ' (' . $lignes . ' tirages)' . PHP_EOL;
+        echo t('maj_ecrit', $nom, t($existait ? 'maj_mis_a_jour' : 'maj_cree'), $lignes) . PHP_EOL;
     }
 }
 
@@ -473,37 +613,37 @@ function tirerPondere(array $poids): int
 
 function afficherContexte(array $tirages, array $options): void
 {
-    $premier = $tirages[0]['date']->format('d/m/Y');
-    $dernier = $tirages[count($tirages) - 1]['date']->format('d/m/Y');
+    $premier = $tirages[0]['date']->format(t('format_date'));
+    $dernier = $tirages[count($tirages) - 1]['date']->format(t('format_date'));
     $jours   = array_count_values(array_column($tirages, 'jour'));
     ksort($jours);
 
+    $repartition = implode(', ', array_map(fn($j, $n) => nomJour($j) . ' ' . $n, array_keys($jours), $jours));
+    $fenetre     = $options['fenetre'] > 0
+        ? t('ctx_fenetre_active', $options['fenetre'], nombre($options['poids_recent'], 1))
+        : t('ctx_fenetre_inactive');
+
     echo PHP_EOL;
-    echo 'Tirages analysés : ' . count($tirages) . ' (du ' . $premier . ' au ' . $dernier . ')' . PHP_EOL;
-    echo 'Avec numéro chance : ' . compterAvecChance($tirages) . PHP_EOL;
-    echo 'Répartition par jour : ' . implode(', ', array_map(fn($j, $n) => $j . ' ' . $n, array_keys($jours), $jours)) . PHP_EOL;
-    echo 'Fenêtre récente : ' . ($options['fenetre'] > 0 ? $options['fenetre'] . ' tirages, poids ' . $options['poids_recent'] : 'désactivée') . PHP_EOL;
+    echo t('ctx_tirages', count($tirages), $premier, $dernier) . PHP_EOL;
+    echo t('ctx_chance', compterAvecChance($tirages)) . PHP_EOL;
+    echo t('ctx_jours', $repartition) . PHP_EOL;
+    echo t('ctx_fenetre', $fenetre) . PHP_EOL;
 }
 
 function afficherGrille(string $titre, array $grille, array $statsBoules, array $statsChance, float $attenduBoule): void
 {
+    $boules = implode(' - ', array_map(fn($b) => sprintf('%02d', $b), $grille['boules']));
+
     echo PHP_EOL . $titre . PHP_EOL;
-    echo '  ' . implode(' - ', array_map(fn($b) => sprintf('%02d', $b), $grille['boules'])) . '  +  chance ' . $grille['chance'] . PHP_EOL;
-    echo '  Détail des boules (probabilité observée vs théorique ' . pourcent($attenduBoule) . ') :' . PHP_EOL;
+    echo t('grille_ligne', $boules, $grille['chance']) . PHP_EOL;
+    echo t('grille_detail', pourcent($attenduBoule)) . PHP_EOL;
     foreach ($grille['boules'] as $boule) {
         $s = $statsBoules[$boule];
-        echo sprintf(
-            '    %02d : %d sorties, p=%s, récent=%s, écart=%d tirages',
-            $boule,
-            $s['sorties'],
-            pourcent($s['p_global']),
-            pourcent($s['p_recent']),
-            $s['ecart']
-        ) . PHP_EOL;
+        echo t('grille_boule', $boule, $s['sorties'], pourcent($s['p_global']), pourcent($s['p_recent']), $s['ecart']) . PHP_EOL;
     }
     $c = $statsChance[$grille['chance']];
-    echo sprintf(
-        '    chance %d : %d sorties, p=%s (théorique %s), récent=%s, écart=%d tirages',
+    echo t(
+        'grille_chance',
         $grille['chance'],
         $c['sorties'],
         pourcent($c['p_global']),
@@ -515,8 +655,10 @@ function afficherGrille(string $titre, array $grille, array $statsBoules, array 
 
 function afficherTableau(string $titre, array $stats, float $attendu): void
 {
-    echo PHP_EOL . $titre . ' (probabilité théorique ' . pourcent($attendu) . ')' . PHP_EOL;
-    echo sprintf('  %-4s %8s %10s %10s %10s %6s', 'N°', 'Sorties', 'P globale', 'P récente', 'Score', 'Écart') . PHP_EOL;
+    $entete = TEXTES[langue()]['tableau_entete'];
+
+    echo PHP_EOL . t('tableau_titre', $titre, pourcent($attendu)) . PHP_EOL;
+    echo sprintf('  %-4s %8s %10s %10s %10s %6s', ...$entete) . PHP_EOL;
     foreach ($stats as $numero => $s) {
         echo sprintf(
             '  %-4s %8d %10s %10s %10s %6d',
@@ -530,27 +672,12 @@ function afficherTableau(string $titre, array $stats, float $attendu): void
     }
 }
 
-function afficherRappelTheorique(): void
+function nombre(float $valeur, int $decimales): string
 {
-    $combinaisons = combinaisons(NB_BOULES, BOULES_PAR_GRILLE) * NB_CHANCE;
-
-    echo PHP_EOL;
-    echo 'Rappel : chaque tirage est indépendant, toute grille a exactement 1 chance sur '
-        . number_format($combinaisons, 0, ',', ' ')
-        . ' de sortir. Les probabilités ci-dessus décrivent le passé, pas l\'avenir.' . PHP_EOL . PHP_EOL;
-}
-
-function combinaisons(int $n, int $k): float
-{
-    $resultat = 1.0;
-    for ($i = 1; $i <= $k; $i++) {
-        $resultat = $resultat * ($n - $k + $i) / $i;
-    }
-
-    return round($resultat);
+    return number_format($valeur, $decimales, t('sep_decimal'), '');
 }
 
 function pourcent(float $valeur): string
 {
-    return number_format($valeur * 100, 2, ',', '') . ' %';
+    return nombre($valeur * 100, 2) . ' %';
 }

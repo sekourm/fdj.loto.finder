@@ -26,8 +26,11 @@ Requires the PHP `curl` and `zip` extensions. Use `--offline` to skip the update
 
 ## Usage
 
+Terminal output is in English by default; pass `--lang=fr` for French.
+
 ```bash
 php index.php
+php index.php --lang=fr
 php index.php --day=SATURDAY --since=01/01/2019
 php index.php --grids=5 --seed=42
 php index.php --stats
@@ -36,6 +39,7 @@ php index.php --help
 
 | Option | Purpose |
 | --- | --- |
+| `--lang=en\|fr` | Output language, `en` by default |
 | `--since=dd/mm/YYYY` | Keep only draws from this date onwards (`YYYY-mm-dd` also accepted) |
 | `--day=MONDAY` | Keep only draws of one weekday (English or French name, e.g. `SATURDAY` or `SAMEDI`) |
 | `--window=N` | Number of most recent draws for the recent component (default 100, 0 to disable) |
